@@ -128,7 +128,7 @@ const PEAKS=[
   {id:90,name:"北大武山",alt:3092,group:"五嶽",difficulty:"A"},
   {id:91,name:"西巒大山",alt:3081,group:"七峭",difficulty:"A"},
   {id:92,name:"塔芬山",alt:3070,group:"八銳",difficulty:"C"},
-  {id:93,name:"立霧主山",alt:3069,group:"十嚴",difficulty:"C"},
+  {id:93,name:"立霧主山",alt:3069,group:"十巖",difficulty:"C"},
   {id:94,name:"安東軍山",alt:3068,group:"十潤",difficulty:"C"},
   {id:95,name:"光頭山",alt:3060,group:"九平",difficulty:"C"},
   {id:96,name:"羊頭山",alt:3035,group:"八瘦",difficulty:"A"},
@@ -140,11 +140,14 @@ const PEAKS=[
 const GROUPS=[...new Set(PEAKS.map(p=>p.group))];
 const DIFF_COLOR={"A":"#52C78A","B":"#5B9BD5","C":"#F5A623","C+":"#E85D75"};
 function getBadge(n){
-  if(n>=100)return{icon:"🏆",label:"百岳完登者"};
-  if(n>=75)return{icon:"🌟",label:"大師級登山家"};
-  if(n>=50)return{icon:"⛰",label:"進階探險者"};
-  if(n>=25)return{icon:"🥾",label:"山徑探索者"};
-  return{icon:"🌱",label:"初心者"};
+  if(n>=100)return{icon:"👑",label:"完百傳奇"};
+  if(n>=99)return{icon:"🌟",label:" 百岳挑戰者"};
+  if(n>=84)return{icon:"🌄",label:"縱走達人"};
+  if(n>=69)return{icon:"🦅",label:"高山行者"};
+  if(n>=49)return{icon:"⛰️",label:"進階山人"};
+  if(n>=29)return{icon:"🥾",label:"山徑探索者"};
+  if(n>=14)return{icon:"🍃",label:"健行者"};
+  return{icon:"🌱",label:"入門山友"};
 }
 function load(){try{const r=localStorage.getItem("baiYue3");return r?new Set(JSON.parse(r)):new Set();}catch{return new Set();}}
 function save(s){try{localStorage.setItem("baiYue3",JSON.stringify([...s]));}catch{}}
