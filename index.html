@@ -141,8 +141,7 @@ const GROUPS=[...new Set(PEAKS.map(p=>p.group))];
 const DIFF_COLOR={"A":"#52C78A","B":"#5B9BD5","C":"#F5A623","C+":"#E85D75"};
 function getBadge(n){
   if(n>=100)return{icon:"👑",label:"完百傳奇"};
-  if(n>=99)return{icon:"🌟",label:" 百岳挑戰者"};
-  if(n>=84)return{icon:"🌄",label:"縱走達人"};
+  if(n>=84)return{icon:"🌟",label:"縱走達人"};
   if(n>=69)return{icon:"🦅",label:"高山行者"};
   if(n>=49)return{icon:"⛰️",label:"進階山人"};
   if(n>=29)return{icon:"🥾",label:"山徑探索者"};
@@ -151,6 +150,8 @@ function getBadge(n){
 }
 function load(){try{const r=localStorage.getItem("baiYue3");return r?new Set(JSON.parse(r)):new Set();}catch{return new Set();}}
 function save(s){try{localStorage.setItem("baiYue3",JSON.stringify([...s]));}catch{}}
+
+const DIFF_INFO=[["A","簡單","1-3天一般健行"],["B","普通","多天需體能"],["C","困難","技術性路線"],["C+","極難","高風險縱走"]];
 
 function App(){
   const[completed,setCompleted]=useState(load);
@@ -173,6 +174,8 @@ function App(){
   const rc=pct>=75?"#52C78A":pct>=40?"#F5A623":"#5B9BD5";
   const e=React.createElement;
   return e("div",{style:{background:"#0C1610",minHeight:"100vh",color:"#DDD5BE",maxWidth:430,margin:"0 auto",overflowX:"hidden"}},
+
+    // ── HEADER
     e("div",{style:{position:"relative",overflow:"hidden"}},
       e("div",{style:{position:"absolute",inset:0,background:"linear-gradient(160deg,#0C2418,#0C1610 60%)"}}),
       e("div",{style:{position:"relative",padding:"48px 24px 0"}},
@@ -180,7 +183,10 @@ function App(){
         e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}},
           e("div",null,
             e("h1",{style:{margin:0,fontSize:28,fontWeight:700,lineHeight:1.2}},"百岳完成度",e("br"),e("span",{style:{color:"#52C78A"}},"追蹤")),
-            e("div",{style:{marginTop:10,display:"flex",alignItems:"center",gap:8}},e("span",{style:{fontSize:18}},badge.icon),e("span",{style:{fontSize:12,color:"#3D6B4A",fontFamily:"monospace"}},badge.label))
+            e("div",{style:{marginTop:10,display:"flex",alignItems:"center",gap:8}},
+              e("span",{style:{fontSize:18}},badge.icon),
+              e("span",{style:{fontSize:12,color:"#3D6B4A",fontFamily:"monospace"}},badge.label)
+            )
           ),
           e("div",{style:{position:"relative",width:96,height:96}},
             e("svg",{width:96,height:96,style:{transform:"rotate(-90deg)"}},
@@ -194,8 +200,13 @@ function App(){
           )
         ),
         e("div",{style:{marginTop:20}},
-          e("div",{style:{background:"#152218",borderRadius:6,height:6,overflow:"hidden"}},e("div",{style:{height:"100%",borderRadius:6,background:"linear-gradient(90deg,#2A7A50,#52C78A)",width:pct+"%"}})),
-          e("div",{style:{display:"flex",justifyContent:"space-between",fontSize:10,color:"#3D6B4A",fontFamily:"monospace",marginTop:5}},e("span",null,"✓ "+count+" 座已完成"),e("span",null,(100-count)+" 座待征服"))
+          e("div",{style:{background:"#152218",borderRadius:6,height:6,overflow:"hidden"}},
+            e("div",{style:{height:"100%",borderRadius:6,background:"linear-gradient(90deg,#2A7A50,#52C78A)",width:pct+"%"}})
+          ),
+          e("div",{style:{display:"flex",justifyContent:"space-between",fontSize:10,color:"#3D6B4A",fontFamily:"monospace",marginTop:5}},
+            e("span",null,"✓ "+count+" 座已完成"),
+            e("span",null,(100-count)+" 座待征服")
+          )
         )
       ),
       e("svg",{viewBox:"0 0 430 70",style:{width:"100%",display:"block",marginTop:20,opacity:0.1}},
@@ -203,18 +214,28 @@ function App(){
         e("polygon",{points:"0,70 60,30 110,55 180,14 260,45 330,18 400,44 430,30 430,70",fill:"#2A5A3A"})
       )
     ),
+
+    // ── TABS
     e("div",{style:{position:"sticky",top:0,zIndex:20,background:"#0C1610ee",borderBottom:"1px solid #1A3020",display:"flex"}},
       ["列表","群組"].map(t=>e("button",{key:t,className:"tab-btn"+(tab===t?" active":""),onClick:()=>setTab(t)},t))
     ),
+
+    // ── 列表 TAB
     tab==="列表"&&e("div",{style:{padding:"14px 16px"}},
+
+      // 搜尋
       e("div",{style:{background:"#111C14",border:"1px solid #1E3525",borderRadius:10,padding:"9px 14px",display:"flex",alignItems:"center",gap:8,marginBottom:10}},
         e("span",{style:{color:"#3D6B4A"}},"🔍"),
         e("input",{value:search,onChange:ev=>setSearch(ev.target.value),placeholder:"搜尋山峰或群組...",style:{flex:1,background:"none",border:"none",outline:"none",color:"#DDD5BE",fontSize:14}}),
         search&&e("span",{onClick:()=>setSearch(""),style:{color:"#3D6B4A",cursor:"pointer",fontSize:20}},"×")
       ),
+
+      // 完成狀態
       e("div",{style:{display:"flex",gap:6,marginBottom:8}},
         ["全部","已完成","未完成"].map(f=>e("button",{key:f,className:"chip"+(status===f?" active":""),onClick:()=>setStatus(f)},f))
       ),
+
+      // 難度篩選
       e("div",{style:{display:"flex",gap:5,marginBottom:8}},
         ["全部","A","B","C","C+"].map(d=>e("button",{key:d,onClick:()=>setDiff(d),style:{
           padding:"4px 12px",borderRadius:20,fontSize:11,cursor:"pointer",fontFamily:"monospace",
@@ -223,66 +244,117 @@ function App(){
           color:diff===d?(d==="全部"?"#7AD9A8":DIFF_COLOR[d]):"#3A5042",
         }},d))
       ),
+
+      // 群組篩選
       e("div",{style:{display:"flex",gap:5,marginBottom:12,overflowX:"auto",paddingBottom:4}},
         ["全部",...GROUPS].map(g=>e("button",{key:g,className:"rchip"+(group===g?" active":""),onClick:()=>setGroup(g)},g))
       ),
-      e("div",{style:{fontSize:11,color:"#2E4E36",fontFamily:"monospace",marginBottom:10}},"顯示 "+filtered.length+" / 100　· 點擊勾選"),
-      e("div",null,filtered.map(peak=>{
-        const done=completed.has(peak.id),dc=DIFF_COLOR[peak.difficulty];
-        return e("div",{key:peak.id,className:"peak-card"+(done?" done":""),onClick:()=>toggle(peak.id)},
-          e("div",{className:"checkbox"+(done?" done":"")},done&&e("svg",{width:12,height:12,viewBox:"0 0 12 12",fill:"none"},e("path",{d:"M2 6l3 3 5-5",stroke:"#0C1610",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"}))),
-          e("div",{style:{flex:1,minWidth:0}},
-            e("div",{style:{fontSize:15,fontWeight:done?600:400,color:done?"#86D4AA":"#C8C0AA"}},peak.name,e("span",{style:{fontSize:10,color:"#2E4E36",marginLeft:7,fontFamily:"monospace"}},"#"+String(peak.id).padStart(3,"0"))),
-            e("div",{style:{fontSize:11,color:"#2E4E36",fontFamily:"monospace",marginTop:2}},peak.alt.toLocaleString()+" m · "+peak.group)
-          ),
-          e("div",{style:{flexShrink:0,textAlign:"center"}},
-            e("div",{style:{background:dc+"22",border:"1px solid "+dc,borderRadius:6,padding:"3px 8px",fontSize:12,fontWeight:700,color:dc,fontFamily:"monospace"}},peak.difficulty),
-            e("div",{style:{fontSize:9,color:dc,marginTop:2,fontFamily:"monospace"}},peak.difficulty==="A"?"簡單":peak.difficulty==="B"?"普通":peak.difficulty==="C"?"困難":"極難")
-          )
-        );
-      }),
-      filtered.length===0&&e("div",{style:{textAlign:"center",padding:"48px 0",color:"#2E4E36"}},e("div",{style:{fontSize:36,marginBottom:10}},"⛰"),e("div",{style:{fontFamily:"monospace",fontSize:13}},"找不到符合條件的山峰")))
-    ),
-    tab==="群組"&&e("div",{style:{padding:"16px 16px"}},
-      e("div",{style:{background:"#0F1912",border:"1px solid #1E3525",borderRadius:14,padding:"14px 18px",marginBottom:12}},
-        e("div",{style:{fontSize:11,color:"#3D6B4A",fontFamily:"monospace",marginBottom:10}},"難度分級"),
-        e("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
-          [["A","簡單","1-3天一般健行"],["B","普通","多天需體能"],["C","困難","技術性路線"],["C+","極難","高風險縱走"]].map(([d,l,desc])=>
-            e("div",{key:d,style:{background:DIFF_COLOR[d]+"15",border:"1px solid "+DIFF_COLOR[d]+"44",borderRadius:8,padding:"8px 10px",flex:1,minWidth:70,textAlign:"center"}},
-              e("div",{style:{fontSize:18,fontWeight:800,color:DIFF_COLOR[d],fontFamily:"monospace"}},d),
-              e("div",{style:{fontSize:11,color:DIFF_COLOR[d],fontWeight:600,marginTop:1}},l),
-              e("div",{style:{fontSize:9,color:"#3D6B4A",marginTop:2}},desc)
+
+      // ── 難度分級說明（群組篩選下面）
+      e("div",{style:{background:"#0F1912",border:"1px solid #1E3525",borderRadius:12,padding:"12px 14px",marginBottom:12}},
+        e("div",{style:{fontSize:10,color:"#3D6B4A",fontFamily:"monospace",marginBottom:8,letterSpacing:2}},"難度分級"),
+        e("div",{style:{display:"flex",gap:6}},
+          DIFF_INFO.map(([d,l,desc])=>
+            e("div",{key:d,style:{
+              flex:1,background:DIFF_COLOR[d]+"15",
+              border:"1px solid "+DIFF_COLOR[d]+"44",
+              borderRadius:8,padding:"8px 6px",textAlign:"center"
+            }},
+              e("div",{style:{fontSize:16,fontWeight:800,color:DIFF_COLOR[d],fontFamily:"monospace",lineHeight:1}},d),
+              e("div",{style:{fontSize:10,color:DIFF_COLOR[d],fontWeight:600,marginTop:3}},l),
+              e("div",{style:{fontSize:9,color:"#3D6B4A",marginTop:2,lineHeight:1.3}},desc)
             )
           )
         )
       ),
+
+      // 顯示筆數
+      e("div",{style:{fontSize:11,color:"#2E4E36",fontFamily:"monospace",marginBottom:10}},
+        "顯示 "+filtered.length+" / 100　· 點擊勾選"
+      ),
+
+      // 山峰列表
+      e("div",null,
+        filtered.map(peak=>{
+          const done=completed.has(peak.id),dc=DIFF_COLOR[peak.difficulty];
+          return e("div",{key:peak.id,className:"peak-card"+(done?" done":""),onClick:()=>toggle(peak.id)},
+            e("div",{className:"checkbox"+(done?" done":"")},
+              done&&e("svg",{width:12,height:12,viewBox:"0 0 12 12",fill:"none"},
+                e("path",{d:"M2 6l3 3 5-5",stroke:"#0C1610",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"})
+              )
+            ),
+            e("div",{style:{flex:1,minWidth:0}},
+              e("div",{style:{fontSize:15,fontWeight:done?600:400,color:done?"#86D4AA":"#C8C0AA"}},
+                peak.name,
+                e("span",{style:{fontSize:10,color:"#2E4E36",marginLeft:7,fontFamily:"monospace"}},"#"+String(peak.id).padStart(3,"0"))
+              ),
+              e("div",{style:{fontSize:11,color:"#2E4E36",fontFamily:"monospace",marginTop:2}},
+                peak.alt.toLocaleString()+" m · "+peak.group
+              )
+            ),
+            e("div",{style:{flexShrink:0,textAlign:"center"}},
+              e("div",{style:{background:dc+"22",border:"1px solid "+dc,borderRadius:6,padding:"3px 8px",fontSize:12,fontWeight:700,color:dc,fontFamily:"monospace"}},peak.difficulty),
+              e("div",{style:{fontSize:9,color:dc,marginTop:2,fontFamily:"monospace"}},
+                peak.difficulty==="A"?"簡單":peak.difficulty==="B"?"普通":peak.difficulty==="C"?"困難":"極難"
+              )
+            )
+          );
+        }),
+        filtered.length===0&&e("div",{style:{textAlign:"center",padding:"48px 0",color:"#2E4E36"}},
+          e("div",{style:{fontSize:36,marginBottom:10}},"⛰"),
+          e("div",{style:{fontFamily:"monospace",fontSize:13}},"找不到符合條件的山峰")
+        )
+      )
+    ),
+
+    // ── 群組 TAB
+    tab==="群組"&&e("div",{style:{padding:"16px 16px"}},
+
+      // 整體統計
       e("div",{style:{background:"#0F1912",border:"1px solid #1E3525",borderRadius:14,padding:"14px 18px",marginBottom:12}},
         e("div",{style:{fontSize:11,color:"#3D6B4A",fontFamily:"monospace",marginBottom:10}},"整體完成統計"),
         e("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:10}},
           [{val:count,label:"已完成",col:"#52C78A"},{val:100-count,label:"待征服",col:"#3D6B4A"},{val:pct+"%",label:"完成率",col:"#F5A623"}].map(s=>
-            e("div",{key:s.label,style:{textAlign:"center"}},e("div",{style:{fontSize:24,fontWeight:800,color:s.col,lineHeight:1}},s.val),e("div",{style:{fontSize:10,color:"#2E4E36",fontFamily:"monospace",marginTop:3}},s.label))
+            e("div",{key:s.label,style:{textAlign:"center"}},
+              e("div",{style:{fontSize:24,fontWeight:800,color:s.col,lineHeight:1}},s.val),
+              e("div",{style:{fontSize:10,color:"#2E4E36",fontFamily:"monospace",marginTop:3}},s.label)
+            )
           )
         ),
-        e("div",{style:{background:"#0C1610",borderRadius:5,height:6,overflow:"hidden"}},e("div",{style:{height:"100%",borderRadius:5,background:"linear-gradient(90deg,#2A7A50,#52C78A)",width:pct+"%"}}))
+        e("div",{style:{background:"#0C1610",borderRadius:5,height:6,overflow:"hidden"}},
+          e("div",{style:{height:"100%",borderRadius:5,background:"linear-gradient(90deg,#2A7A50,#52C78A)",width:pct+"%"}})
+        )
       ),
+
+      // 群組卡片
       e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
         groupStats.map(g=>{
           const c=g.pct>=80?"#52C78A":g.pct>=50?"#F5A623":g.pct>0?"#5B9BD5":"#2A4030";
           const gPeaks=PEAKS.filter(p=>p.group===g.name);
           return e("div",{key:g.name,style:{background:"#0F1912",border:"1px solid #182A1E",borderRadius:14,padding:"14px 16px"}},
             e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}},
-              e("div",null,e("div",{style:{fontSize:15,fontWeight:600,color:"#C8C0AA"}},g.name),e("div",{style:{fontSize:11,color:"#2E4E36",fontFamily:"monospace",marginTop:2}},g.done+" / "+g.total+" 座完成")),
+              e("div",null,
+                e("div",{style:{fontSize:15,fontWeight:600,color:"#C8C0AA"}},g.name),
+                e("div",{style:{fontSize:11,color:"#2E4E36",fontFamily:"monospace",marginTop:2}},g.done+" / "+g.total+" 座完成")
+              ),
               e("div",{style:{fontSize:26,fontWeight:900,color:c}},g.pct+"%")
             ),
-            e("div",{style:{background:"#0C1610",borderRadius:4,height:4,overflow:"hidden",marginBottom:10}},e("div",{style:{height:"100%",borderRadius:4,background:c,width:g.pct+"%",minWidth:g.pct>0?4:0}})),
-            e("div",{style:{display:"flex",flexWrap:"wrap",gap:4}},
-              gPeaks.map(p=>e("div",{key:p.id,title:p.name+" "+p.difficulty,className:"dot"+(completed.has(p.id)?" done":""),onClick:()=>toggle(p.id)},completed.has(p.id)?"✓":""))
+            e("div",{style:{background:"#0C1610",borderRadius:4,height:4,overflow:"hidden",marginBottom:10}},
+              e("div",{style:{height:"100%",borderRadius:4,background:c,width:g.pct+"%",minWidth:g.pct>0?4:0}})
             ),
-            g.done>0&&e("div",{style:{marginTop:8,fontSize:10,color:"#3D6B4A",fontFamily:"monospace",lineHeight:1.6}},gPeaks.filter(p=>completed.has(p.id)).map(p=>p.name).join("、"))
+            e("div",{style:{display:"flex",flexWrap:"wrap",gap:4}},
+              gPeaks.map(p=>e("div",{key:p.id,title:p.name+" "+p.difficulty,className:"dot"+(completed.has(p.id)?" done":""),onClick:()=>toggle(p.id)},
+                completed.has(p.id)?"✓":""
+              ))
+            ),
+            g.done>0&&e("div",{style:{marginTop:8,fontSize:10,color:"#3D6B4A",fontFamily:"monospace",lineHeight:1.6}},
+              gPeaks.filter(p=>completed.has(p.id)).map(p=>p.name).join("、")
+            )
           );
         })
       )
     ),
+
     e("div",{style:{height:48}})
   );
 }
