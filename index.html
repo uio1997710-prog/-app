@@ -1,4 +1,3 @@
-cat > /mnt/user-data/outputs/index.html << 'HTMLEOF'
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -27,14 +26,33 @@ cat > /mnt/user-data/outputs/index.html << 'HTMLEOF'
     .checkbox.done { background: #52C78A; border-color: #52C78A; }
     .dot { width: 26px; height: 26px; border-radius: 6px; background: #111C14; border: 1px solid #1E3020; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 10px; color: transparent; font-weight: 700; }
     .dot.done { background: #1D4A2A; border-color: #52C78A; color: #52C78A; }
+    .login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 40px 24px; background: #0C1610; }
+    .google-btn { display: flex; align-items: center; gap: 12px; background: #fff; color: #333; border: none; border-radius: 12px; padding: 14px 24px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%; max-width: 300px; justify-content: center; margin-top: 32px; }
   </style>
 </head>
 <body>
 <div id="app" style="max-width:430px;margin:0 auto;min-height:100vh;overflow-x:hidden;"></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>
-const{useState,useMemo}=React;
+
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyABkh2t8meAf9EWy0iHlofMwpYqwAugFL8",
+  authDomain: "bai-yue.firebaseapp.com",
+  projectId: "bai-yue",
+  storageBucket: "bai-yue.firebasestorage.app",
+  messagingSenderId: "309872388074",
+  appId: "1:309872388074:web:3ad4567e97a045df86f493",
+  measurementId: "G-90LQCWELKT"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
 const PEAKS=[
   {id:1,name:"玉山主峰",alt:3952,group:"五嶽",difficulty:"A"},
   {id:2,name:"雪山主峰",alt:3886,group:"五嶽",difficulty:"A"},
@@ -137,8 +155,143 @@ const PEAKS=[
   {id:99,name:"六順山",alt:2999,group:"九平",difficulty:"B"},
   {id:100,name:"鹿山",alt:2981,group:"六肩稜",difficulty:"C"},
 ];
+
 const GROUPS=[...new Set(PEAKS.map(p=>p.group))];
+
+const GEAR={
+  輕裝:[
+    {cat:"行走裝備",items:[
+      {id:"g1",name:"小背包＋背包套",note:"20L以上",must:true},
+      {id:"g2",name:"頭燈",note:"附備用電池",must:true},
+      {id:"g3",name:"登山杖",note:"",must:true},
+      {id:"g4",name:"地圖＋指北針",note:"",must:true},
+      {id:"g5",name:"離線地圖/GPS",note:"下載至手機",must:true},
+      {id:"g6",name:"行動電話",note:"",must:true},
+      {id:"g7",name:"手錶",note:"",must:true},
+      {id:"g8",name:"護膝",note:"",must:false},
+      {id:"g9",name:"綁腿",note:"",must:false},
+      {id:"g10",name:"工具手套",note:"視地形而定",must:false},
+    ]},
+    {cat:"衣著",items:[
+      {id:"g11",name:"排汗衣",note:"",must:true},
+      {id:"g12",name:"快乾排汗長褲",note:"",must:true},
+      {id:"g13",name:"排汗內衣褲",note:"",must:true},
+      {id:"g14",name:"中層保暖衣",note:"",must:true},
+      {id:"g15",name:"兩截式雨衣褲",note:"",must:true},
+      {id:"g16",name:"排汗襪",note:"",must:true},
+      {id:"g17",name:"登山鞋／雨鞋",note:"",must:true},
+      {id:"g18",name:"遮陽帽",note:"視季節而定",must:false},
+      {id:"g19",name:"保暖帽",note:"視季節而定",must:false},
+      {id:"g20",name:"墨鏡",note:"視季節而定",must:false},
+      {id:"g21",name:"頭巾",note:"",must:false},
+    ]},
+    {cat:"食物",items:[
+      {id:"g22",name:"隨身糧（行動糧）",note:"",must:true},
+      {id:"g23",name:"食物",note:"",must:true},
+      {id:"g24",name:"水瓶／水袋",note:"",must:true},
+      {id:"g25",name:"垃圾袋",note:"",must:true},
+    ]},
+    {cat:"自救包",items:[
+      {id:"g26",name:"大黑塑膠袋",note:"",must:true},
+      {id:"g27",name:"哨子",note:"",must:true},
+      {id:"g28",name:"備用電池",note:"",must:true},
+      {id:"g29",name:"鹽巴",note:"",must:true},
+      {id:"g30",name:"打火機",note:"",must:true},
+    ]},
+    {cat:"醫藥包",items:[
+      {id:"g31",name:"彈性繃帶",note:"",must:true},
+      {id:"g32",name:"OK繃",note:"",must:true},
+      {id:"g33",name:"個人藥品",note:"",must:true},
+      {id:"g34",name:"碘酒",note:"",must:true},
+      {id:"g35",name:"面速力達母／紫草膏",note:"",must:true},
+    ]},
+    {cat:"其他",items:[
+      {id:"g36",name:"健保卡",note:"",must:true},
+      {id:"g37",name:"入山入園證",note:"須事先申請",must:true},
+      {id:"g38",name:"登山保險",note:"",must:true},
+      {id:"g39",name:"登山紀錄",note:"",must:true},
+      {id:"g40",name:"錢",note:"",must:true},
+      {id:"g41",name:"防曬乳",note:"視季節而定",must:false},
+      {id:"g42",name:"防蚊液",note:"視季節而定",must:false},
+      {id:"g43",name:"相機",note:"",must:false},
+    ]},
+  ],
+  重裝:[
+    {cat:"行走裝備",items:[
+      {id:"h1",name:"大背包＋背包套",note:"50L以上",must:true},
+      {id:"h2",name:"頭燈",note:"附備用電池",must:true},
+      {id:"h3",name:"登山杖",note:"",must:true},
+      {id:"h4",name:"地圖＋指北針",note:"",must:true},
+      {id:"h5",name:"離線地圖/GPS",note:"",must:true},
+      {id:"h6",name:"行動電話",note:"",must:true},
+      {id:"h7",name:"衛星電話／無線電",note:"",must:false},
+      {id:"h8",name:"護膝",note:"",must:false},
+      {id:"h9",name:"綁腿",note:"",must:true},
+      {id:"h10",name:"冰爪",note:"視路線雪況而定",must:false},
+      {id:"h11",name:"工具手套",note:"",must:true},
+      {id:"h12",name:"防水袋",note:"",must:true},
+    ]},
+    {cat:"衣著",items:[
+      {id:"h13",name:"排汗衣（多件）",note:"",must:true},
+      {id:"h14",name:"快乾排汗長褲",note:"",must:true},
+      {id:"h15",name:"排汗內衣褲（多件）",note:"",must:true},
+      {id:"h16",name:"中層保暖衣",note:"",must:true},
+      {id:"h17",name:"羽絨外套",note:"",must:true},
+      {id:"h18",name:"兩截式雨衣褲",note:"",must:true},
+      {id:"h19",name:"排汗襪（多雙）",note:"",must:true},
+      {id:"h20",name:"登山鞋",note:"",must:true},
+      {id:"h21",name:"輕便拖鞋",note:"營地使用",must:false},
+      {id:"h22",name:"保暖帽",note:"",must:true},
+      {id:"h23",name:"墨鏡",note:"",must:true},
+      {id:"h24",name:"保暖手套",note:"",must:true},
+    ]},
+    {cat:"露營裝備",items:[
+      {id:"h25",name:"帳篷",note:"",must:true},
+      {id:"h26",name:"睡袋",note:"視氣溫選擇",must:true},
+      {id:"h27",name:"睡墊",note:"",must:true},
+      {id:"h28",name:"炊具（爐頭＋氣罐）",note:"",must:true},
+      {id:"h29",name:"鍋具",note:"",must:true},
+      {id:"h30",name:"餐具",note:"",must:true},
+      {id:"h31",name:"濾水器／淨水錠",note:"",must:true},
+    ]},
+    {cat:"食物",items:[
+      {id:"h32",name:"主食（每日三餐）",note:"",must:true},
+      {id:"h33",name:"行動糧（隨身糧）",note:"",must:true},
+      {id:"h34",name:"水瓶／水袋",note:"",must:true},
+      {id:"h35",name:"垃圾袋",note:"",must:true},
+    ]},
+    {cat:"自救包",items:[
+      {id:"h36",name:"大黑塑膠袋",note:"",must:true},
+      {id:"h37",name:"哨子",note:"",must:true},
+      {id:"h38",name:"備用電池",note:"",must:true},
+      {id:"h39",name:"鹽巴",note:"",must:true},
+      {id:"h40",name:"打火機",note:"",must:true},
+      {id:"h41",name:"求生毯",note:"",must:true},
+      {id:"h42",name:"繩索",note:"",must:false},
+    ]},
+    {cat:"醫藥包",items:[
+      {id:"h43",name:"彈性繃帶",note:"",must:true},
+      {id:"h44",name:"OK繃",note:"",must:true},
+      {id:"h45",name:"個人藥品",note:"",must:true},
+      {id:"h46",name:"碘酒",note:"",must:true},
+      {id:"h47",name:"高山症藥物",note:"",must:true},
+      {id:"h48",name:"面速力達母／紫草膏",note:"",must:true},
+    ]},
+    {cat:"其他",items:[
+      {id:"h49",name:"健保卡",note:"",must:true},
+      {id:"h50",name:"入山入園證",note:"須事先申請",must:true},
+      {id:"h51",name:"登山保險",note:"",must:true},
+      {id:"h52",name:"登山計畫書",note:"",must:true},
+      {id:"h53",name:"錢",note:"",must:true},
+      {id:"h54",name:"防曬乳",note:"",must:false},
+      {id:"h55",name:"頭燈備用燈泡",note:"",must:false},
+      {id:"h56",name:"相機",note:"",must:false},
+    ]},
+  ],
+};
 const DIFF_COLOR={"A":"#52C78A","B":"#5B9BD5","C":"#F5A623","C+":"#E85D75"};
+const DIFF_INFO=[["A","簡單","1-3天一般健行"],["B","普通","多天需體能"],["C","困難","技術性路線"],["C+","極難","高風險縱走"]];
+
 function getBadge(n){
   if(n>=100)return{icon:"👑",label:"完百傳奇"};
   if(n>=84)return{icon:"🌟",label:"縱走達人"};
@@ -148,18 +301,119 @@ function getBadge(n){
   if(n>=14)return{icon:"🍃",label:"健行者"};
   return{icon:"🌱",label:"入門山友"};
 }
-function load(){try{const r=localStorage.getItem("baiYue3");return r?new Set(JSON.parse(r)):new Set();}catch{return new Set();}}
-function save(s){try{localStorage.setItem("baiYue3",JSON.stringify([...s]));}catch{}}
 
-const DIFF_INFO=[["A","簡單","1-3天一般健行"],["B","普通","多天需體能"],["C","困難","技術性路線"],["C+","極難","高風險縱走"]];
+// React App
+const {useState,useMemo,useEffect} = React;
+
+function LoginScreen({onLogin,loading}){
+  const e=React.createElement;
+  return e("div",{className:"login-screen"},
+    e("svg",{viewBox:"0 0 430 120",style:{width:"100%",opacity:0.15,marginBottom:8}},
+      e("polygon",{points:"0,120 80,30 140,70 220,5 300,55 360,20 430,60 430,120",fill:"#4CAF8A"}),
+      e("polygon",{points:"0,120 60,50 110,80 180,22 260,65 330,30 400,62 430,45 430,120",fill:"#2A5A3A"})
+    ),
+    e("div",{style:{fontSize:10,letterSpacing:5,color:"#3D6B4A",fontFamily:"monospace",marginBottom:12}},"TAIWAN · 台灣百岳"),
+    e("h1",{style:{fontSize:36,fontWeight:800,color:"#DDD5BE",textAlign:"center",lineHeight:1.2}},
+      "百岳",e("br"),e("span",{style:{color:"#52C78A"}},"追蹤")
+    ),
+    e("p",{style:{color:"#3D6B4A",fontSize:13,textAlign:"center",marginTop:16,lineHeight:1.6,fontFamily:"monospace"}},
+      "登入後記錄會儲存在雲端\n換手機也不會消失"
+    ),
+    e("button",{className:"google-btn",onClick:onLogin,disabled:loading},
+      e("svg",{width:20,height:20,viewBox:"0 0 48 48"},
+        e("path",{fill:"#FFC107",d:"M43.6 20H24v8h11.3C33.6 33.1 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 20-8.9 20-20 0-1.3-.1-2.7-.4-4z"}),
+        e("path",{fill:"#FF3D00",d:"M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.5 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"}),
+        e("path",{fill:"#4CAF50",d:"M24 44c5.2 0 9.9-1.9 13.5-5l-6.2-5.2C29.4 35.6 26.8 36 24 36c-5.2 0-9.6-2.9-11.3-7.1l-6.5 5C9.6 39.6 16.3 44 24 44z"}),
+        e("path",{fill:"#1976D2",d:"M43.6 20H24v8h11.3c-.9 2.5-2.6 4.6-4.8 6l6.2 5.2C40.7 35.5 44 30.2 44 24c0-1.3-.1-2.7-.4-4z"})
+      ),
+      loading ? "登入中..." : "用 Google 帳號登入"
+    ),
+    e("p",{style:{color:"#2A4030",fontSize:11,textAlign:"center",marginTop:24,fontFamily:"monospace"}},
+      "你的資料只有你自己看得到"
+    )
+  );
+}
 
 function App(){
-  const[completed,setCompleted]=useState(load);
+  const[user,setUser]=useState(null);
+  const[authLoading,setAuthLoading]=useState(true);
+  const[loginLoading,setLoginLoading]=useState(false);
+  const[completed,setCompleted]=useState(new Set());
   const[search,setSearch]=useState("");
   const[group,setGroup]=useState("全部");
   const[tab,setTab]=useState("列表");
   const[status,setStatus]=useState("全部");
   const[diff,setDiff]=useState("全部");
+  const[saving,setSaving]=useState(false);
+  const[gearType,setGearType]=useState("輕裝");
+  const[gearChecked,setGearChecked]=useState({});
+  const[gearNotes,setGearNotes]=useState({});
+  const[gearDetail,setGearDetail]=useState(null); // 目前展開的裝備id
+
+  // 監聽登入狀態
+  useEffect(()=>{
+    const unsub=onAuthStateChanged(auth,async u=>{
+      setUser(u);
+      setAuthLoading(false);
+      if(u){
+        // 載入雲端資料
+        try{
+          const ref=doc(db,"users",u.uid);
+          const snap=await getDoc(ref);
+          if(snap.exists()){
+            const data=snap.data();
+            setCompleted(new Set(data.completed||[]));
+            setGearChecked(data.gearChecked||{});
+            setGearNotes(data.gearNotes||{});
+          }
+        }catch(err){console.log(err);}
+      }
+    });
+    return()=>unsub();
+  },[]);
+
+  const handleLogin=async()=>{
+    setLoginLoading(true);
+    try{
+      const provider=new GoogleAuthProvider();
+      await signInWithPopup(auth,provider);
+    }catch(err){
+      console.log(err);
+      alert("登入失敗，請再試一次");
+    }
+    setLoginLoading(false);
+  };
+
+  const handleLogout=async()=>{
+    if(confirm("確定要登出嗎？")){
+      await signOut(auth);
+      setCompleted(new Set());
+    }
+  };
+
+  const toggleGear=async(id)=>{
+    const next={...gearChecked,[id]:!gearChecked[id]};
+    setGearChecked(next);
+    try{await setDoc(doc(db,"users",user.uid),{gearChecked:next},{merge:true});}catch(e){}
+  };
+  const saveNote=async(id,val)=>{
+    const next={...gearNotes,[id]:val};
+    setGearNotes(next);
+    try{await setDoc(doc(db,"users",user.uid),{gearNotes:next},{merge:true});}catch(e){}
+  };
+
+  const toggle=async(id)=>{
+    const s=new Set(completed);
+    s.has(id)?s.delete(id):s.add(id);
+    setCompleted(s);
+    // 儲存到雲端
+    setSaving(true);
+    try{
+      await setDoc(doc(db,"users",user.uid),{completed:[...s]},{merge:true});
+    }catch(err){console.log(err);}
+    setSaving(false);
+  };
+
   const count=completed.size,pct=count,badge=getBadge(pct),C=2*Math.PI*40;
   const filtered=useMemo(()=>PEAKS.filter(p=>{
     if(search&&!p.name.includes(search)&&!p.group.includes(search))return false;
@@ -169,22 +423,46 @@ function App(){
     if(diff!=="全部"&&p.difficulty!==diff)return false;
     return true;
   }),[search,group,status,diff,completed]);
-  const toggle=id=>setCompleted(prev=>{const s=new Set(prev);s.has(id)?s.delete(id):s.add(id);save(s);return s;});
-  const groupStats=GROUPS.map(g=>{const all=PEAKS.filter(p=>p.group===g),done=all.filter(p=>completed.has(p.id));return{name:g,total:all.length,done:done.length,pct:Math.round(done.length/all.length*100)};}).sort((a,b)=>b.pct-a.pct);
+
+  const groupStats=GROUPS.map(g=>{
+    const all=PEAKS.filter(p=>p.group===g),done=all.filter(p=>completed.has(p.id));
+    return{name:g,total:all.length,done:done.length,pct:Math.round(done.length/all.length*100)};
+  }).sort((a,b)=>b.pct-a.pct);
+
   const rc=pct>=75?"#52C78A":pct>=40?"#F5A623":"#5B9BD5";
   const e=React.createElement;
+
+  // 載入中
+  if(authLoading) return e("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#0C1610"}},
+    e("div",{style:{color:"#3D6B4A",fontFamily:"monospace",fontSize:13}},"載入中...")
+  );
+
+  // 未登入
+  if(!user) return e(LoginScreen,{onLogin:handleLogin,loading:loginLoading});
+
+  // 已登入
   return e("div",{style:{background:"#0C1610",minHeight:"100vh",color:"#DDD5BE",maxWidth:430,margin:"0 auto",overflowX:"hidden"}},
 
-    // ── HEADER
+    // HEADER
     e("div",{style:{position:"relative",overflow:"hidden"}},
       e("div",{style:{position:"absolute",inset:0,background:"linear-gradient(160deg,#0C2418,#0C1610 60%)"}}),
       e("div",{style:{position:"relative",padding:"48px 24px 0"}},
-        e("div",{style:{fontSize:10,letterSpacing:5,color:"#3D6B4A",fontFamily:"monospace",marginBottom:8}},"TAIWAN · 台灣百岳"),
+        e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},
+          e("div",{style:{fontSize:10,letterSpacing:5,color:"#3D6B4A",fontFamily:"monospace"}},"TAIWAN · 台灣百岳"),
+          e("div",{style:{display:"flex",alignItems:"center",gap:8}},
+            saving&&e("span",{style:{fontSize:10,color:"#3D6B4A",fontFamily:"monospace"}},"儲存中..."),
+            e("button",{onClick:handleLogout,style:{background:"none",border:"1px solid #2A4030",borderRadius:8,padding:"4px 10px",color:"#3D6B4A",fontSize:11,cursor:"pointer",fontFamily:"monospace"}},"登出")
+          )
+        ),
         e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}},
           e("div",null,
             e("h1",{style:{margin:0,fontSize:28,fontWeight:700,lineHeight:1.2}},"百岳完成度",e("br"),e("span",{style:{color:"#52C78A"}},"追蹤")),
-            e("div",{style:{marginTop:10,display:"flex",alignItems:"center",gap:8}},
-              e("span",{style:{fontSize:18}},badge.icon),
+            e("div",{style:{marginTop:6,display:"flex",alignItems:"center",gap:6}},
+              e("img",{src:user.photoURL,style:{width:18,height:18,borderRadius:"50%"},onError:ev=>ev.target.style.display="none"}),
+              e("span",{style:{fontSize:11,color:"#3D6B4A",fontFamily:"monospace"}},user.displayName||user.email)
+            ),
+            e("div",{style:{marginTop:6,display:"flex",alignItems:"center",gap:8}},
+              e("span",{style:{fontSize:16}},badge.icon),
               e("span",{style:{fontSize:12,color:"#3D6B4A",fontFamily:"monospace"}},badge.label)
             )
           ),
@@ -199,7 +477,7 @@ function App(){
             )
           )
         ),
-        e("div",{style:{marginTop:20}},
+        e("div",{style:{marginTop:16}},
           e("div",{style:{background:"#152218",borderRadius:6,height:6,overflow:"hidden"}},
             e("div",{style:{height:"100%",borderRadius:6,background:"linear-gradient(90deg,#2A7A50,#52C78A)",width:pct+"%"}})
           ),
@@ -209,33 +487,27 @@ function App(){
           )
         )
       ),
-      e("svg",{viewBox:"0 0 430 70",style:{width:"100%",display:"block",marginTop:20,opacity:0.1}},
+      e("svg",{viewBox:"0 0 430 70",style:{width:"100%",display:"block",marginTop:16,opacity:0.1}},
         e("polygon",{points:"0,70 80,15 140,45 220,2 300,35 360,10 430,40 430,70",fill:"#4CAF8A"}),
         e("polygon",{points:"0,70 60,30 110,55 180,14 260,45 330,18 400,44 430,30 430,70",fill:"#2A5A3A"})
       )
     ),
 
-    // ── TABS
+    // TABS
     e("div",{style:{position:"sticky",top:0,zIndex:20,background:"#0C1610ee",borderBottom:"1px solid #1A3020",display:"flex"}},
-      ["列表","群組"].map(t=>e("button",{key:t,className:"tab-btn"+(tab===t?" active":""),onClick:()=>setTab(t)},t))
+      ["列表","群組","裝備"].map(t=>e("button",{key:t,className:"tab-btn"+(tab===t?" active":""),onClick:()=>setTab(t)},t))
     ),
 
-    // ── 列表 TAB
+    // 列表 TAB
     tab==="列表"&&e("div",{style:{padding:"14px 16px"}},
-
-      // 搜尋
       e("div",{style:{background:"#111C14",border:"1px solid #1E3525",borderRadius:10,padding:"9px 14px",display:"flex",alignItems:"center",gap:8,marginBottom:10}},
         e("span",{style:{color:"#3D6B4A"}},"🔍"),
         e("input",{value:search,onChange:ev=>setSearch(ev.target.value),placeholder:"搜尋山峰或群組...",style:{flex:1,background:"none",border:"none",outline:"none",color:"#DDD5BE",fontSize:14}}),
         search&&e("span",{onClick:()=>setSearch(""),style:{color:"#3D6B4A",cursor:"pointer",fontSize:20}},"×")
       ),
-
-      // 完成狀態
       e("div",{style:{display:"flex",gap:6,marginBottom:8}},
         ["全部","已完成","未完成"].map(f=>e("button",{key:f,className:"chip"+(status===f?" active":""),onClick:()=>setStatus(f)},f))
       ),
-
-      // 難度篩選
       e("div",{style:{display:"flex",gap:5,marginBottom:8}},
         ["全部","A","B","C","C+"].map(d=>e("button",{key:d,onClick:()=>setDiff(d),style:{
           padding:"4px 12px",borderRadius:20,fontSize:11,cursor:"pointer",fontFamily:"monospace",
@@ -244,59 +516,36 @@ function App(){
           color:diff===d?(d==="全部"?"#7AD9A8":DIFF_COLOR[d]):"#3A5042",
         }},d))
       ),
-
-      // 群組篩選
-      e("div",{style:{display:"flex",gap:5,marginBottom:12,overflowX:"auto",paddingBottom:4}},
+      e("div",{style:{display:"flex",gap:5,marginBottom:10,overflowX:"auto",paddingBottom:4}},
         ["全部",...GROUPS].map(g=>e("button",{key:g,className:"rchip"+(group===g?" active":""),onClick:()=>setGroup(g)},g))
       ),
-
-      // ── 難度分級說明（群組篩選下面）
-      e("div",{style:{background:"#0F1912",border:"1px solid #1E3525",borderRadius:12,padding:"12px 14px",marginBottom:12}},
+      e("div",{style:{background:"#0F1912",border:"1px solid #1E3525",borderRadius:12,padding:"10px 14px",marginBottom:12}},
         e("div",{style:{fontSize:10,color:"#3D6B4A",fontFamily:"monospace",marginBottom:8,letterSpacing:2}},"難度分級"),
         e("div",{style:{display:"flex",gap:6}},
-          DIFF_INFO.map(([d,l,desc])=>
-            e("div",{key:d,style:{
-              flex:1,background:DIFF_COLOR[d]+"15",
-              border:"1px solid "+DIFF_COLOR[d]+"44",
-              borderRadius:8,padding:"8px 6px",textAlign:"center"
-            }},
-              e("div",{style:{fontSize:16,fontWeight:800,color:DIFF_COLOR[d],fontFamily:"monospace",lineHeight:1}},d),
-              e("div",{style:{fontSize:10,color:DIFF_COLOR[d],fontWeight:600,marginTop:3}},l),
-              e("div",{style:{fontSize:9,color:"#3D6B4A",marginTop:2,lineHeight:1.3}},desc)
-            )
-          )
+          DIFF_INFO.map(([d,l,desc])=>e("div",{key:d,style:{flex:1,background:DIFF_COLOR[d]+"15",border:"1px solid "+DIFF_COLOR[d]+"44",borderRadius:8,padding:"8px 6px",textAlign:"center"}},
+            e("div",{style:{fontSize:16,fontWeight:800,color:DIFF_COLOR[d],fontFamily:"monospace",lineHeight:1}},d),
+            e("div",{style:{fontSize:10,color:DIFF_COLOR[d],fontWeight:600,marginTop:3}},l),
+            e("div",{style:{fontSize:9,color:"#3D6B4A",marginTop:2,lineHeight:1.3}},desc)
+          ))
         )
       ),
-
-      // 顯示筆數
-      e("div",{style:{fontSize:11,color:"#2E4E36",fontFamily:"monospace",marginBottom:10}},
-        "顯示 "+filtered.length+" / 100　· 點擊勾選"
-      ),
-
-      // 山峰列表
+      e("div",{style:{fontSize:11,color:"#2E4E36",fontFamily:"monospace",marginBottom:10}},"顯示 "+filtered.length+" / 100　· 點擊勾選"),
       e("div",null,
         filtered.map(peak=>{
           const done=completed.has(peak.id),dc=DIFF_COLOR[peak.difficulty];
           return e("div",{key:peak.id,className:"peak-card"+(done?" done":""),onClick:()=>toggle(peak.id)},
             e("div",{className:"checkbox"+(done?" done":"")},
-              done&&e("svg",{width:12,height:12,viewBox:"0 0 12 12",fill:"none"},
-                e("path",{d:"M2 6l3 3 5-5",stroke:"#0C1610",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"})
-              )
+              done&&e("svg",{width:12,height:12,viewBox:"0 0 12 12",fill:"none"},e("path",{d:"M2 6l3 3 5-5",stroke:"#0C1610",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"}))
             ),
             e("div",{style:{flex:1,minWidth:0}},
               e("div",{style:{fontSize:15,fontWeight:done?600:400,color:done?"#86D4AA":"#C8C0AA"}},
-                peak.name,
-                e("span",{style:{fontSize:10,color:"#2E4E36",marginLeft:7,fontFamily:"monospace"}},"#"+String(peak.id).padStart(3,"0"))
+                peak.name,e("span",{style:{fontSize:10,color:"#2E4E36",marginLeft:7,fontFamily:"monospace"}},"#"+String(peak.id).padStart(3,"0"))
               ),
-              e("div",{style:{fontSize:11,color:"#2E4E36",fontFamily:"monospace",marginTop:2}},
-                peak.alt.toLocaleString()+" m · "+peak.group
-              )
+              e("div",{style:{fontSize:11,color:"#2E4E36",fontFamily:"monospace",marginTop:2}},peak.alt.toLocaleString()+" m · "+peak.group)
             ),
             e("div",{style:{flexShrink:0,textAlign:"center"}},
               e("div",{style:{background:dc+"22",border:"1px solid "+dc,borderRadius:6,padding:"3px 8px",fontSize:12,fontWeight:700,color:dc,fontFamily:"monospace"}},peak.difficulty),
-              e("div",{style:{fontSize:9,color:dc,marginTop:2,fontFamily:"monospace"}},
-                peak.difficulty==="A"?"簡單":peak.difficulty==="B"?"普通":peak.difficulty==="C"?"困難":"極難"
-              )
+              e("div",{style:{fontSize:9,color:dc,marginTop:2,fontFamily:"monospace"}},peak.difficulty==="A"?"簡單":peak.difficulty==="B"?"普通":peak.difficulty==="C"?"困難":"極難")
             )
           );
         }),
@@ -307,10 +556,8 @@ function App(){
       )
     ),
 
-    // ── 群組 TAB
+    // 群組 TAB
     tab==="群組"&&e("div",{style:{padding:"16px 16px"}},
-
-      // 整體統計
       e("div",{style:{background:"#0F1912",border:"1px solid #1E3525",borderRadius:14,padding:"14px 18px",marginBottom:12}},
         e("div",{style:{fontSize:11,color:"#3D6B4A",fontFamily:"monospace",marginBottom:10}},"整體完成統計"),
         e("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:10}},
@@ -325,8 +572,6 @@ function App(){
           e("div",{style:{height:"100%",borderRadius:5,background:"linear-gradient(90deg,#2A7A50,#52C78A)",width:pct+"%"}})
         )
       ),
-
-      // 群組卡片
       e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
         groupStats.map(g=>{
           const c=g.pct>=80?"#52C78A":g.pct>=50?"#F5A623":g.pct>0?"#5B9BD5":"#2A4030";
@@ -343,9 +588,7 @@ function App(){
               e("div",{style:{height:"100%",borderRadius:4,background:c,width:g.pct+"%",minWidth:g.pct>0?4:0}})
             ),
             e("div",{style:{display:"flex",flexWrap:"wrap",gap:4}},
-              gPeaks.map(p=>e("div",{key:p.id,title:p.name+" "+p.difficulty,className:"dot"+(completed.has(p.id)?" done":""),onClick:()=>toggle(p.id)},
-                completed.has(p.id)?"✓":""
-              ))
+              gPeaks.map(p=>e("div",{key:p.id,title:p.name+" "+p.difficulty,className:"dot"+(completed.has(p.id)?" done":""),onClick:()=>toggle(p.id)},completed.has(p.id)?"✓":""))
             ),
             g.done>0&&e("div",{style:{marginTop:8,fontSize:10,color:"#3D6B4A",fontFamily:"monospace",lineHeight:1.6}},
               gPeaks.filter(p=>completed.has(p.id)).map(p=>p.name).join("、")
@@ -354,13 +597,132 @@ function App(){
         })
       )
     ),
+    // 裝備 TAB
+    tab==="裝備"&&e("div",{style:{padding:"14px 16px"}},
 
-    e("div",{style:{height:48}})
+      // 輕裝/重裝切換
+      e("div",{style:{display:"flex",gap:8,marginBottom:16}},
+        ["輕裝","重裝"].map(t=>e("button",{key:t,onClick:()=>setGearType(t),style:{
+          flex:1,padding:"10px 0",borderRadius:10,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit",
+          background:gearType===t?"#1D4A2A":"#0F1912",
+          border:"1px solid "+(gearType===t?"#52C78A":"#1E3525"),
+          color:gearType===t?"#7AD9A8":"#3A5E42",
+        }},t==="輕裝"?"🥾 輕裝（單日）":"🎒 重裝（多日）"))
+      ),
+
+      // 統計
+      e("div",{style:{background:"#0F1912",border:"1px solid #1E3525",borderRadius:12,padding:"10px 16px",marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center"}},
+        e("span",{style:{fontSize:12,color:"#3D6B4A",fontFamily:"monospace"}},gearType+" 裝備"),
+        e("span",{style:{fontSize:13,color:"#52C78A",fontFamily:"monospace",fontWeight:700}},
+          GEAR[gearType].reduce((a,c)=>a+c.items.filter(i=>gearChecked[i.id]).length,0)
+          +" / "+
+          GEAR[gearType].reduce((a,c)=>a+c.items.length,0)
+          +" 項已勾選"
+        )
+      ),
+
+      // 裝備分類列表
+      GEAR[gearType].map(cat=>e("div",{key:cat.cat,style:{marginBottom:16}},
+        // 分類標題
+        e("div",{style:{fontSize:11,color:"#52C78A",fontFamily:"monospace",letterSpacing:2,marginBottom:8,paddingLeft:4,borderLeft:"2px solid #52C78A",paddingLeft:8}},cat.cat),
+
+        // 裝備項目
+        cat.items.map(item=>{
+          const checked=!!gearChecked[item.id];
+          const isOpen=gearDetail===item.id;
+          const note=gearNotes[item.id]||"";
+          return e("div",{key:item.id,style:{marginBottom:4}},
+            // 主列
+            e("div",{style:{
+              background:checked?"#142118":"#0F1912",
+              border:"1px solid "+(checked?"#265A34":"#182A1E"),
+              borderLeft:"3px solid "+(checked?"#52C78A":"#182A1E"),
+              borderRadius:isOpen?"10px 10px 0 0":10,
+              padding:"10px 12px",
+              display:"flex",alignItems:"center",gap:10,
+            }},
+              // 勾選框
+              e("div",{onClick:()=>toggleGear(item.id),style:{
+                width:20,height:20,borderRadius:5,flexShrink:0,
+                border:"2px solid "+(checked?"#52C78A":"#264030"),
+                background:checked?"#52C78A":"transparent",
+                display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",
+              }},checked&&e("svg",{width:11,height:11,viewBox:"0 0 12 12",fill:"none"},
+                e("path",{d:"M2 6l3 3 5-5",stroke:"#0C1610",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"})
+              )),
+              // 名稱
+              e("div",{style:{flex:1,cursor:"pointer"},onClick:()=>setGearDetail(isOpen?null:item.id)},
+                e("div",{style:{fontSize:14,color:checked?"#86D4AA":"#C8C0AA",fontWeight:checked?600:400,display:"flex",alignItems:"center",gap:6}},
+                  item.name,
+                  !item.must&&e("span",{style:{fontSize:9,color:"#3D6B4A",fontFamily:"monospace",background:"#1A3020",padding:"1px 5px",borderRadius:4}},"非必備")
+                ),
+                item.note&&e("div",{style:{fontSize:10,color:"#3D6B4A",fontFamily:"monospace",marginTop:2}},item.note)
+              ),
+              // 展開箭頭
+              e("span",{onClick:()=>setGearDetail(isOpen?null:item.id),style:{color:"#3D6B4A",fontSize:14,cursor:"pointer",transform:isOpen?"rotate(90deg)":"none",transition:"transform 0.2s"}},"›"),
+              // 備註點
+              note&&e("div",{style:{width:6,height:6,borderRadius:"50%",background:"#F5A623",flexShrink:0}})
+            ),
+            // 展開細項
+            isOpen&&e("div",{style:{
+              background:"#0A1410",
+              border:"1px solid #1E3525",
+              borderTop:"none",
+              borderRadius:"0 0 10px 10px",
+              padding:"12px 14px",
+            }},
+              e("div",{style:{fontSize:11,color:"#3D6B4A",fontFamily:"monospace",marginBottom:6}},"個人備註"),
+              e("textarea",{
+                value:note,
+                onChange:ev=>saveNote(item.id,ev.target.value),
+                placeholder:"輸入備註，例如：品牌、數量、提醒事項...",
+                rows:3,
+                style:{
+                  width:"100%",background:"#111C14",border:"1px solid #1E3525",
+                  borderRadius:8,padding:"8px 10px",color:"#DDD5BE",fontSize:13,
+                  fontFamily:"inherit",resize:"none",outline:"none",lineHeight:1.5,
+                }
+              })
+            )
+          );
+        })
+      )),
+
+      e("div",{style:{height:20}})
+    ),
+
+    // 回到頂部按鈕
+    e("button",{
+      onClick:()=>window.scrollTo({top:0,behavior:"smooth"}),
+      style:{
+        position:"fixed",
+        bottom:28,
+        right:20,
+        width:44,
+        height:44,
+        borderRadius:"50%",
+        background:"#1D4A2A",
+        border:"1px solid #52C78A",
+        color:"#52C78A",
+        fontSize:20,
+        cursor:"pointer",
+        display:"flex",
+        alignItems:"center",
+        justifyContent:"center",
+        boxShadow:"0 4px 16px #00000066",
+        zIndex:99,
+      }
+    },"↑")
   );
 }
-ReactDOM.createRoot(document.getElementById("app")).render(React.createElement(App));
+
+// 載入 React 後啟動
+import("https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js").catch(()=>{});
+window.addEventListener("load",()=>{
+  ReactDOM.createRoot(document.getElementById("app")).render(React.createElement(App));
+});
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 </body>
 </html>
-HTMLEOF
-echo "Done"
