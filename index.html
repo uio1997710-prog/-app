@@ -9,8 +9,16 @@
   <meta name="apple-mobile-web-app-title" content="百岳追蹤"/>
   <meta name="theme-color" content="#0C1610"/>
   <link rel="apple-touch-icon" href="icon.svg"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
   <style>
-    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+    .leaflet-container{background:#0A1810!important;}
+    .leaflet-tile{filter:brightness(0.45) saturate(0.5) hue-rotate(100deg);}
+    .leaflet-control-zoom a{background:#1A3020!important;color:#52C78A!important;border-color:#2A5A30!important;}
+    .leaflet-popup-content-wrapper{background:#1A2E1E!important;border:1px solid #2A5A30!important;border-radius:10px!important;color:#DDD5BE!important;box-shadow:0 4px 20px #000a!important;}
+    .leaflet-popup-tip{background:#1A2E1E!important;}
+    .leaflet-popup-content{margin:10px 14px!important;font-family:'Georgia',serif;}
+    .leaflet-popup-close-button{color:#52C78A!important;font-size:18px!important;}
+  </style>
     body{background:#0C1610;color:#DDD5BE;font-family:'Georgia',serif;}
     input,button,textarea{font-family:inherit;}
     ::-webkit-scrollbar{display:none;}
@@ -32,6 +40,7 @@
 </head>
 <body>
 <div id="app" style="max-width:430px;margin:0 auto;min-height:100vh;overflow-x:hidden;"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script type="module">
@@ -165,13 +174,7 @@ const GROUP_COLOR={
   "干卓萬群峰":"#9C7CC4","獨立山峰":"#888888"
 };
 
-// 台灣地圖 SVG 座標轉換（lat/lng → svg x/y）
-// 台灣範圍: lng 120.0~122.0, lat 21.9~25.3
-function toSVG(lat,lng){
-  const x=((lng-119.9)/(122.2-119.9))*220+20;
-  const y=((25.5-lat)/(25.5-21.8))*440+20;
-  return[Math.round(x),Math.round(y)];
-}
+// Leaflet 地圖用，不需要 toSVG
 
 const DIFF_COLOR={"A":"#52C78A","B":"#5B9BD5","C":"#F5A623","C+":"#E85D75"};
 const DIFF_INFO=[["A","簡單","1-3天健行"],["B","普通","多天需體能"],["C","困難","技術路線"],["C+","極難","高風險縱走"]];
@@ -453,45 +456,116 @@ function App(){
   if(authLoading)return e("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#0C1610"}},e("div",{style:{color:"#3D6B4A",fontFamily:"monospace"}},"載入中..."));
   if(!user)return e(LoginScreen,{onLogin:async function(){setLoginLoading(true);try{await signInWithPopup(auth,new GoogleAuthProvider());}catch(ex){alert("登入失敗");}setLoginLoading(false);},loading:loginLoading});
 
-  // 台灣地圖組件
+  // Leaflet 地圖組件
   function TaiwanMap(){
-    const svgW=260,svgH=460;
-    return e("div",{style:{position:"relative"}},
-      e("svg",{viewBox:"0 0 "+svgW+" "+svgH,style:{width:"100%",display:"block",background:"#0A1810",borderRadius:8}},
-        // 台灣島輪廓 - 更接近真實形狀
-        e("path",{
-          d:"M130,12 C138,13 148,18 156,26 C165,35 172,46 177,58 C183,72 186,87 187,102 C188,117 186,132 183,147 C180,162 175,176 170,190 C165,204 159,218 154,232 C149,246 145,260 141,274 C137,288 133,302 128,315 C123,328 117,340 110,351 C103,362 95,371 87,378 C79,385 70,390 62,390 C54,390 47,385 42,378 C36,370 33,360 31,349 C29,338 29,326 31,314 C33,302 37,290 41,278 C45,266 49,254 52,242 C55,230 57,218 57,206 C57,194 55,182 53,170 C51,158 49,146 49,134 C49,122 51,110 55,99 C59,88 65,78 72,69 C79,60 87,52 96,46 C105,40 115,36 122,34 C126,13 128,12 130,12Z",
-          fill:"#1C3A20",stroke:"#2A5A2A",strokeWidth:1.5
-        }),
-        // 中央山脈
-        e("path",{d:"M128,25 C126,45 124,70 123,95 C122,120 122,145 122,170 C122,195 123,220 122,245 C121,268 119,290 116,312 C113,334 109,354 104,370",fill:"none",stroke:"#3A6A3A",strokeWidth:1,strokeDasharray:"4,3",opacity:0.6}),
+    const mapRef=React.useRef(null);
+    const leafletRef=React.useRef(null);
+    const markersRef=React.useRef({});
 
-        // 百岳點位
-        PEAKS.map(function(p){
-          const pos=toSVG(p.lat,p.lng);
-          const x=pos[0];const y=pos[1];
-          const isDone=completed.has(p.id);
-          const color=GROUP_COLOR[p.group]||"#888";
-          return e("g",{key:p.id,onClick:function(){togglePeak(p.id);},style:{cursor:"pointer"}},
-            isDone&&e("circle",{cx:x,cy:y,r:6,fill:color,opacity:0.25}),
-            e("circle",{
-              cx:x,cy:y,r:isDone?4.5:3,
-              fill:isDone?color:"#1C3A20",
-              stroke:isDone?color:"#3A6A3A",
-              strokeWidth:isDone?0:1,
-              opacity:isDone?1:0.7
-            }),
-            isDone&&e("circle",{cx:x,cy:y,r:2,fill:"#fff",opacity:0.8})
-          );
-        })
-      ),
+    React.useEffect(function(){
+      if(!mapRef.current)return;
+      if(leafletRef.current){
+        // 更新 marker 樣式（勾選狀態改變時）
+        PEAKS.forEach(function(p){
+          var m=markersRef.current[p.id];
+          if(!m)return;
+          var isDone=completed.has(p.id);
+          var color=GROUP_COLOR[p.group]||"#888";
+          var icon=L.divIcon({
+            className:"",
+            html:'<div style="width:'+(isDone?14:9)+'px;height:'+(isDone?14:9)+'px;border-radius:50%;background:'+(isDone?color:"#1C3A20")+';border:2px solid '+(isDone?color:"#3A6A3A")+';box-shadow:'+(isDone?'0 0 6px '+color+'88':"none")+';display:flex;align-items:center;justify-content:center;">'+(isDone?'<div style="width:4px;height:4px;border-radius:50%;background:#fff;"></div>':'')+'</div>',
+            iconSize:[isDone?14:9,isDone?14:9],
+            iconAnchor:[isDone?7:4.5,isDone?7:4.5]
+          });
+          m.setIcon(icon);
+        });
+        return;
+      }
+
+      // 初始化地圖
+      var map=L.map(mapRef.current,{
+        center:[23.8,121.0],
+        zoom:8,
+        minZoom:7,
+        maxZoom:14,
+        zoomControl:true,
+        attributionControl:false
+      });
+      leafletRef.current=map;
+
+      // OpenStreetMap 底圖
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+        attribution:"© OpenStreetMap",
+        maxZoom:19
+      }).addTo(map);
+
+      // 加入所有百岳 marker
+      PEAKS.forEach(function(p){
+        var isDone=completed.has(p.id);
+        var color=GROUP_COLOR[p.group]||"#888";
+        var icon=L.divIcon({
+          className:"",
+          html:'<div style="width:'+(isDone?14:9)+'px;height:'+(isDone?14:9)+'px;border-radius:50%;background:'+(isDone?color:"#1C3A20")+';border:2px solid '+(isDone?color:"#3A6A3A")+';box-shadow:'+(isDone?'0 0 6px '+color+'88':"none")+';display:flex;align-items:center;justify-content:center;">'+(isDone?'<div style="width:4px;height:4px;border-radius:50%;background:#fff;"></div>':'')+'</div>',
+          iconSize:[isDone?14:9,isDone?14:9],
+          iconAnchor:[isDone?7:4.5,isDone?7:4.5]
+        });
+        var marker=L.marker([p.lat,p.lng],{icon:icon}).addTo(map);
+        markersRef.current[p.id]=marker;
+
+        // popup
+        var diffLabel={"A":"簡單","B":"普通","C":"困難","C+":"極難"};
+        var diffColor={"A":"#52C78A","B":"#5B9BD5","C":"#F5A623","C+":"#E85D75"};
+        marker.bindPopup(
+          '<div style="min-width:150px">'
+          +'<div style="font-size:15px;font-weight:700;color:#DDD5BE;margin-bottom:4px;">'+p.name+'</div>'
+          +'<div style="font-size:11px;color:'+color+';font-family:monospace;margin-bottom:6px;">'+p.group+'</div>'
+          +'<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">'
+          +'<span style="font-size:13px;color:#52C78A;font-family:monospace;">⛰ '+p.alt.toLocaleString()+' m</span>'
+          +'<span style="font-size:10px;color:#3D6B4A;font-family:monospace;">#'+String(p.id).padStart(3,"0")+'</span>'
+          +'<span style="font-size:11px;color:'+diffColor[p.difficulty]+';font-family:monospace;border:1px solid '+diffColor[p.difficulty]+'44;padding:1px 6px;border-radius:4px;">'+p.difficulty+' '+diffLabel[p.difficulty]+'</span>'
+          +'</div>'
+          +'<button id="toggle_'+p.id+'" style="width:100%;padding:6px;border-radius:8px;border:1px solid '+(completed.has(p.id)?"#E85D75":"#52C78A")+';background:'+(completed.has(p.id)?"#2A1010":"#1D4A2A")+';color:'+(completed.has(p.id)?"#E85D75":"#7AD9A8")+';cursor:pointer;font-size:12px;">'+(completed.has(p.id)?"✓ 已完成（點擊取消）":"○ 未完成（點擊勾選）")+'</button>'
+          +'</div>',
+          {maxWidth:220}
+        );
+        marker.on("popupopen",function(){
+          var btn=document.getElementById("toggle_"+p.id);
+          if(btn)btn.onclick=function(){togglePeak(p.id);map.closePopup();};
+        });
+      });
+
+      return function(){
+        if(leafletRef.current){leafletRef.current.remove();leafletRef.current=null;}
+      };
+    },[]);
+
+    // 當 completed 改變時更新 marker
+    React.useEffect(function(){
+      if(!leafletRef.current)return;
+      PEAKS.forEach(function(p){
+        var m=markersRef.current[p.id];
+        if(!m)return;
+        var isDone=completed.has(p.id);
+        var color=GROUP_COLOR[p.group]||"#888";
+        var icon=L.divIcon({
+          className:"",
+          html:'<div style="width:'+(isDone?14:9)+'px;height:'+(isDone?14:9)+'px;border-radius:50%;background:'+(isDone?color:"#1C3A20")+';border:2px solid '+(isDone?color:"#3A6A3A")+';box-shadow:'+(isDone?'0 0 6px '+color+'88':"none")+';display:flex;align-items:center;justify-content:center;">'+(isDone?'<div style="width:4px;height:4px;border-radius:50%;background:#fff;"></div>':'')+'</div>',
+          iconSize:[isDone?14:9,isDone?14:9],
+          iconAnchor:[isDone?7:4.5,isDone?7:4.5]
+        });
+        m.setIcon(icon);
+      });
+    },[completed]);
+
+    return e("div",null,
+      e("div",{ref:mapRef,style:{width:"100%",height:400,borderRadius:10,overflow:"hidden"}}),
       // 圖例
       e("div",{style:{marginTop:10,display:"flex",flexWrap:"wrap",gap:4}},
         ROUTE_GROUPS.map(function(g){
-          const stat=groupStats.find(function(s){return s.name===g;});
-          const done=stat?stat.done:0;
-          const total=stat?stat.total:0;
-          const color=GROUP_COLOR[g];
+          var stat=groupStats.find(function(s){return s.name===g;});
+          var done=stat?stat.done:0;
+          var total=stat?stat.total:0;
+          var color=GROUP_COLOR[g];
           return e("div",{key:g,
             onClick:function(){setFilterGroup(g);setTab("列表");},
             style:{display:"flex",alignItems:"center",gap:4,cursor:"pointer",padding:"2px 7px",borderRadius:10,background:done>0?"#0F1912":"transparent",border:"1px solid "+(done>0?color+"44":"#1A2A1A")}},
